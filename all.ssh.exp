@@ -1,0 +1,98 @@
+#!/usr/bin/expect  
+
+if { [llength $argv] < 1 } {
+	puts "### USAGE:  $argv0 ip user  passwd port commands"
+	exit 1
+}
+
+match_max 2000
+
+set ip [lindex $argv 0]
+set user msdomain1\\rwang4
+#set user msdomain1\\psdeploy
+set passwd Maxwell0322
+#set passwd MBobs0R1
+set port 22
+set commands [lindex $argv 1]
+set timeout 90
+#puts "$ip $user $passwd $port $commands"
+
+#puts "spawn ssh $user@$ip -p$port"
+
+for {} {1} {} {
+spawn ssh -q -l$user -p$port $ip
+expect 	{
+	"assword:" {
+		send "$passwd\r"
+		break;
+	}
+
+	timeout {
+		puts "\n[info]CONNECTERROR: $ip logon TIMEOUT!!!\n"
+		exit 2
+	}
+
+	"Connection Timed Out" {
+		puts "\nCONNECTERROR: $ip logon TIMEOUT!!!\n"
+		exit 2
+	}
+
+	"Interrupted system call" {
+		puts "\n$ip Interrupted system call!!!\n"
+	}
+
+
+	"Authentication failed" {
+		puts "\n$ip Authentication failed!!!\n"
+		exit 2
+	}
+
+    }
+}
+expect {
+	"# " {send "$commands \r"}
+	">" {send "$commands \r"}
+	"> " {send "$commands \r"}
+	"\$ " {send "$commands \r"}
+}
+expect {
+    "password for MSDOMAIN1\rwang4" { send {"$passwd\r" } }
+    "password:" { send "$passwd\r"}
+    "psdeploy:" { send "$passwd\r"}
+    "password for MSDOMAIN1*: " {send "$passwd\r"} 
+	"#" {send "sleep 1 \r"}
+	">" {send "sleep 1 \r"}
+	"\$ " {send "sleep 1 \r"}
+	"> " {send "sleep 1 \r"}
+	"\$ " {send "sleep 1 \r"}
+	"stop OK" {send "sleep 1 \r"}
+	"stop Failed" {send "sleep 1 \r"}
+}
+
+expect {
+    "password for MSDOMAIN1\rwang4" { send {"$passwd\r" } }
+    "password:" { send "$passwd\r"}
+    "psdeploy:" { send "$passwd\r"}
+    "password for MSDOMAIN1*: " {send "$passwd\r"} 
+	"#" {send "sleep 1 \r"}
+	">" {send "sleep 1 \r"}
+	"\$ " {send "sleep 1 \r"}
+	"> " {send "sleep 1 \r"}
+	"\$ " {send "sleep 1 \r"}
+	"stop OK" {send "sleep 1 \r"}
+	"stop Failed" {send "sleep 1 \r"}
+}
+
+
+expect {
+	"#" {send "exit\r"}
+	">" {send "exit\r"}
+	"\$" {send "exit\r"}
+	"> " {send "exit\r"}
+	"\$ " {send "exit\r"}
+}
+
+expect eof {
+	puts "\[info\] remote sudo : $ip\n"
+	exit 0;
+}

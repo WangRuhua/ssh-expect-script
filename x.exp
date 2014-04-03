@@ -1,0 +1,6 @@
+#!/usr/bin/expect -d
+#expect -re "[^  ]*"
+expect "hi*"
+puts "$expect_out(0,string)"
+puts "================="
+puts "$expect_out(buffer)"

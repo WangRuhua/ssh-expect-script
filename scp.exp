@@ -1,0 +1,131 @@
+#!/usr/bin/expect 
+#!/usr/bin/expect  -d
+
+if { [llength $argv] < 3 } {
+    puts "$argv0 remoteIP username password port sourcefile dest_dir"
+	exit 0
+    #$argv0
+}
+
+set ip [lindex $argv 0]
+#set user [lindex $argv 1]
+set user "msdomain1\\rwang4"
+#set passwd [lindex $argv 2]
+set passwd "waldeN0322"
+#set port [lindex $argv 3]
+set port 22
+
+set sourcefile [lindex $argv 1]
+set destdir [lindex $argv 2]
+
+set yesnoflag 0
+set timeout 60
+
+
+spawn /usr/bin/rsync -arP  --exclude=.svn -e "/usr/bin/ssh -l$user -p$port" $sourcefile $ip:$destdir
+while 1 {
+expect 	{
+
+	"\[pP]assword:" {
+		send "$passwd\r" 
+		break;
+	}
+	"sending incremental file list\r\n" {
+		puts "sending files now \r" 
+		break;
+	}
+	
+	"yes/no)?" {
+		set yesnoflag 1
+		send "yes\r"
+	}
+	
+	"FATAL" {
+		puts "\nCONNECTERROR: $ip occur FATAL ERROR!!!\n"
+		exit 2
+	}
+	
+	timeout {
+		puts "\nCONNECTERROR: $ip logon TIMEOUT!!!\n"
+		exit 2
+	}
+	
+    "\[nN]ame or service not known" {
+        puts "\nCONNECTERROR: $ip invlid host name !!!\n"
+        exit 2
+    }
+	"No route to host" {
+		puts "\nCONNECTERROR: $ip No route to host!!!\n"
+		exit 2
+	}
+	
+	"Connection Refused" {
+		puts "\nCONNECTERROR: $ip Connection Refused!!!\n"
+		exit 2
+	}
+
+	"Connection refused" {
+		puts "\nCONNECTERROR: $ip Connection Refused!!!\n"
+		exit 2
+	}
+
+	"Host key verification failed" {
+		puts "\nCONNECTERROR: $ip Host key verification failed!!!\n"
+		exit 2
+	}
+	
+	"Illegal host key" {
+		puts "\nCONNECTERROR: $ip Illegal host key!!!\n"
+		exit 2
+	}
+		
+	"Connection Timed Out" {
+		puts "\nCONNECTERROR: $ip logon TIMEOUT!!!\n"
+		exit 2
+	}
+
+	"Interrupted system call" {
+		puts "\n$ip Interrupted system call!!!\n"
+	}
+
+	"Disconnected; connection lost" {
+		puts "\n$ip connection lost!!!\n"
+		exit 2
+	}
+
+	"Authentication failed" {
+		puts "\n$ip Authentication failed!!!\n"
+		exit 2
+	}
+
+	"Destination Unreachable" {
+		puts "\n$ip Destination Unreachable!!!\n"
+		exit 2
+	}
+
+	"no such file" {
+		puts "\nSRCFILEERROR: $ip SCP FAILURE!!!\n"
+		exit 4
+	}
+
+}
+
+}
+
+
+expect {
+	
+	"unspecified failure" {
+		puts "\nDESTDIRERROR: $ip SCP FAILURE!!!\n"
+		exit 4
+	}
+    -re "total size is .* speedup is .*" {
+        puts "rsync finished"
+        exit 0
+      }
+
+	eof { 
+		puts "rsync finished: $ip EOF\n"
+		exit 0;
+	}
+}
