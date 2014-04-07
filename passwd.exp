@@ -1,6 +1,0 @@
-#!/usr/bin/expect  
-spawn su user_0
-expect {
-    "user user_0 does not exist" { puts "\nxxx"}
-}
-exec sleep 3

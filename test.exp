@@ -1,7 +1,0 @@
-#!/usr/bin/expect 
-
-set user [lindex $argv 0 ]
-
-puts $user
-puts [string compare string1 ""]
-puts [string compare 12 12]
