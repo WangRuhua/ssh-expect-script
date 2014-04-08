@@ -1,112 +1,110 @@
 #!/usr/bin/expect  
 #!/usr/bin/expect  -d
 
-if { [llength $argv] < 1 } {
+if { [llength $argv] < 2 } {
     puts "usage:./$argv0  user ip port passwd commands"
 	exit 1
 }
 
 match_max 3000
 
-#./sudo.ssh.exp $user $ip $port "$passwd" "$commands" 
-
 set user [lindex $argv 0]
 set ip [lindex $argv 1]
 set port [lindex $argv 2]
 set passwd [lindex $argv 3]
-set commands [lindex $argv 5]
+set commands [lindex $argv 4]
 set timeout 60
 
-puts "spawn ssh  $user@$ip -p$port"
+
+proc print_time {} {
+    return [ clock format [clock seconds]  -format %H:%M:%S]
+}
 
 set prompt "(%|#|\\\$) $"
 
 for { set i 0 } { $i < 20 } { incr i } {
 
-spawn ssh  $user@$ip -p$port
-expect 	{
-    -re $prompt { 
-		puts "i'm login now\n" 
-                send "\r"
-		break;
-		}
-	-re "assword:" {
-		send "$passwd\r"
-		break;
-	}
+    spawn ssh  $user@$ip -p$port
+    puts "[print_time] connecting to $user@$ip -p$port commands:$commands #$i" 
+    expect 	{
+        -re $prompt { 
+            puts "[print_time] $ip connected"
+                    send "\r"
+            break;
+            }
+        -re "\[pP]assword:" {
+            send "$passwd\r"
+            break;
+        }
 
-	"yes/no)?" {
-		send "yes\r"
-		break;
-	}
+        "\(yes\/no\)\?" {
+            send "yes\r"
+        }
+        "Please type \'yes\' or \'no\': " {
+            send "yes\r"
+        }
 
-	timeout {
-		puts "$ip\t connecting: $ip TIMEOUT!!!\n"
-		exit 2
-	}
-    "Connection refused\r\r\n"
-    {
-        puts "$ip connection refused "
-        exit 3
+        timeout {
+            puts "\n[print_time] $ip\t connect timeout\n"
+            exit 2
+        }
+        "Connection refused"
+        {
+            puts "[print_time] $ip connection refused\n"
+            exit 3
 
+        }
+
+        }
+}
+
+puts "\n[print_time] $ip going to next expect loop\n"
+
+for { set i 0 } { $i < 5 } { incr i } {
+    expect {
+        -re "\r\nLast login: .* from .*\r\r\n" {
+            puts "\r\n[print_time] $ip I'm login sucessful"
+            }
+
+        -re $prompt {
+            send "stty -echo\r\n$commands \r"
+            break;
+            }
+        "Your password will expire in * days" {
+            #send "$commands \r" 
+            send "stty -echo\r\n$commands \r"
+            break;
+            }
+
+        "assword" {
+            send "$passwd\r"
+            #puts "\n [print_time] $ip \n"
+            }
+
+        -re "\[Pp]assword for $user" {
+            send {"$passwd\r" }
+            }
+
+        "Permission denied, please try again.\r\r\n" {
+            puts "\n [print_time] $ip seems the password is incorrect \n"
+            exit 4
+        }
+	    "is not in the sudoers file.  This incident will be reported." {
+            puts "\n [print_time] $ip $user does not has the sudo priviege\n"
+            exit 5
+        }
     }
-
-	}
 }
 
-exit
+puts "\n[print_time] $ip going to last \n"
 expect {
-	"#" {send "$commands \r"}
-	"Your password will expire in * days" {send "\r$commands \r"}
-
-	">" {send "$commands \r"}
-	"> " {send "$commands \r"}
-	"\$ " {send "$commands \r"}
-	"#" {send "$commands \r"}
-	"assword" {
-		send "$passwd\r"
-		puts "\nPASSWORDERROR: $ip PASSWORD ERROR!!!\n"
-		exit 3
-	}
-    "\[Pp]assword for mstar" { send {"$passwd\r" } }
-}
-
-
-sleep 1
-expect {
-    "\[Pp]assword for MSDOMAIN1\rwang4" { send {"$passwd\r" } }
-    "\[Pp]assword for mstar:" { send {"$passwd\r" } }
-    "\[Pp]assword:" { send "$passwd\r"}
-#    "\[Pp]assword: " { send "$passwd\r"}
-    "rwang4: " { send "$passwd\r"}
-    "rwang4:" { send "$passwd\r"}
-    "psdeploy:" { send "$passwd\r"}
-    "password for mstar: " {send "$passwd\r"} 
-	"\$ " {send "sleep 1 \r"}
-	"#" {send "sleep 1  \r"}
-}
-expect {
-	"is not in the sudoers file.  This incident will be reported." {
-	send "\r" }
-	"# " {send "sleep 1 \r"}
-	">" {send "sleep 1 \r"}
-	"\$ " {send "sleep 1 \r"}
-	"> " {send "sleep 1 \r"}
-	"\$ " {send "sleep 1 \r"}
-	"stop OK" {send "sleep 1 \r"}
-	"stop Failed" {send "sleep 1 \r"}
-}
-
-sleep 1
-expect {
-	"#" {send "exit\r"}
-	">" {send "exit\r"}
-	"\$" {send "exit\r"}
-	"> " {send "exit\r"}
-	"\$ " {send "exit\r"}
+	-re $prompt { 
+        puts "\n[print_time] $ip quit\n"
+        send "exit\r\n" 
+        }
 }
 
 expect eof {
-	puts "\[info\] remote sudo : $ip\n"
+	puts "\n [print_time] operation complete $ip\n"
 	exit 0;
 }

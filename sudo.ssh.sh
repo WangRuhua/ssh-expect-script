@@ -66,7 +66,7 @@ stty   echo
 echo "IPfile=$IPfile"
 echo "remote machines list:"
 head -10 $IPfile
-echo "script will execute commands:$commands on `head -2 $IPfile|xargs ` by user:$user passwd:$passwd"
+#echo "script will execute commands:$commands on `head -2 $IPfile|xargs ` by user:$user passwd:$passwd"
 
 #read ip
 myIFS=":"
@@ -75,8 +75,8 @@ cat $IPfile |grep -v ^$|grep -v ^\#|while read tmp
 do
 	ip=`echo $tmp|awk  '{print $1}'`
 
-	echo "\#$i ./sudo.ssh.exp $user $ip $port $commands"
-	./sudo.ssh.exp $user $ip $port "$commands"
+	echo "#$i ./sudo.ssh.exp $user $ip $port $commands"
+	./sudo.ssh.exp "$user" $ip $port $passwd "$commands" 
     trap 'echo "exit now...";exit'  2
     sleep 2;
     i=`expr $i + 1 `
