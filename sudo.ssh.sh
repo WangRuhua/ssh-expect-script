@@ -52,8 +52,8 @@ while getopts "h:v:f:u:p:m:" opt; do
 done
 shift "$((OPTIND-1))" # Shift off the options and optional --.
 
-printf 'verbose=<%s>\nuser=<%s>\nIPfile=<%s>\nport=<%s>\ncommands=<%s>\nLeftovers:\n' "$verbose" "$user" "$IPfile" "$port" "$commands"
-printf '<%s>\n' "$@"
+#printf 'verbose=<%s>\nuser=<%s>\nIPfile=<%s>\nport=<%s>\ncommands=<%s>\nLeftovers:\n' "$verbose" "$user" "$IPfile" "$port" "$commands"
+#printf '<%s>\n' "$@"
 
 [ -z "$commands" ] && { echo "no commands is found,check the arguments please";show_help;exit 3;}
 
@@ -78,7 +78,7 @@ do
 	echo "#$i ./sudo.ssh.exp $user $ip $port $commands"
 	./sudo.ssh.exp "$user" $ip $port $passwd "$commands" 
     trap 'echo "exit now...";exit'  2
-    sleep 2;
+    sleep 3;
     i=`expr $i + 1 `
 done
 
