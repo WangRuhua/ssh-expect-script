@@ -48,7 +48,7 @@ while getopts "h:v:f:u:p:m:" opt; do
                     exit 1
                     ;;
     esac
-    echo "again:$OPTARG ===="
+    #echo "again:$OPTARG ===="
 done
 shift "$((OPTIND-1))" # Shift off the options and optional --.
 

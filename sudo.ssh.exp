@@ -19,16 +19,21 @@ set timeout 60
 proc print_time {} {
     return [ clock format [clock seconds]  -format %H:%M:%S]
 }
+proc info_msg { a } {
+    global ip
+    puts "\n[print_time] info $ip $a\n"
+}
 
 set prompt "(%|#|\\\$) $"
 
+set commands_flag 0
 for { set i 0 } { $i < 20 } { incr i } {
 
     spawn ssh  $user@$ip -p$port
     puts "[print_time] connecting to $user@$ip -p$port commands:$commands #$i" 
     expect 	{
         -re $prompt { 
-            puts "[print_time] $ip connected"
+            puts "[print_time] $ip connected -expect-"
                     send "\r"
             break;
             }
@@ -58,21 +63,24 @@ for { set i 0 } { $i < 20 } { incr i } {
         }
 }
 
-puts "\n[print_time] $ip going to next expect loop\n"
+#info_msg { "going to next loop"}
 
 for { set i 0 } { $i < 5 } { incr i } {
     expect {
         -re "\r\nLast login: .* from .*\r\r\n" {
-            puts "\r\n[print_time] $ip I'm login sucessful"
+            #puts "\r\n[print_time] $ip I'm login successful"
+            puts "\n"
             }
 
         -re $prompt {
-            send "stty -echo\r\n$commands \r"
+            send "$commands \r"
+            set commands_flag 1
             break;
             }
         "Your password will expire in * days" {
-            #send "$commands \r" 
-            send "stty -echo\r\n$commands \r"
+            send "$commands \r" 
+            set commands_flag 1
+            #send "stty -echo\r\n$commands \r"
             break;
             }
 
@@ -82,7 +90,7 @@ for { set i 0 } { $i < 5 } { incr i } {
             }
 
         -re "\[Pp]assword for $user" {
-            send {"$passwd\r" }
+            send "$passwd\r" 
             }
 
         "Permission denied, please try again.\r\r\n" {
@@ -93,18 +101,35 @@ for { set i 0 } { $i < 5 } { incr i } {
             puts "\n [print_time] $ip $user does not has the sudo priviege\n"
             exit 5
         }
+        timeout {
+            puts "\n[print_time] $ip\t connect timeout\n"
+            exit 2
+        }
     }
 }
 
-puts "\n[print_time] $ip going to last \n"
-expect {
-	-re $prompt { 
-        puts "\n[print_time] $ip quit\n"
-        send "exit\r\n" 
-        }
-}
 
-expect eof {
-	puts "\n [print_time] operation complete $ip\n"
-	exit 0;
-}
+for { set i 0 } { $i < 3 } { incr i } {
+    expect {
+            "assword" {
+                    send "$passwd\r"
+                    }
+            -re $prompt { 
+                if {$commands_flag == 0} {
+                        send "$commands\r"
+                        set commands_flag 1
+                   } else {
+                        send "logout\r"
+                    }
+
+                }
+            timeout {
+                    puts "\n[print_time] $ip\t connect timeout\n"
+                }
+            eof {
+                puts "\n [print_time] operation complete $ip\n"
+                exit 0
+                }
+
+        }
+    }
