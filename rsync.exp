@@ -1,0 +1,97 @@
+#!/usr/bin/expect  -d
+#!/usr/bin/expect  
+
+if { [llength $argv] < 2 } {
+    puts "usage:./$argv0  user ip port passwd commands"
+	exit 1
+}
+
+match_max 3000
+
+set user [lindex $argv 0]
+set ip [lindex $argv 1]
+set port [lindex $argv 2]
+set passwd [lindex $argv 3]
+set source_files [lindex $argv 4]
+set target_dir [lindex $argv 5]
+set timeout 60
+
+
+#./rsync.exp $user $ip $port $passwd $source_files $target_dir
+puts "rsync -arzv -e \"ssh -p $port\" $source_files $user@$ip:$target_dir"
+proc print_time {} {
+    return [ clock format [clock seconds]  -format %H:%M:%S]
+}
+proc info_msg { a } {
+    global ip
+    puts "\n[print_time] info $ip $a\n"
+}
+
+set prompt "(%|#|\\\$) $"
+set commands_flag 0
+
+for { set i 0 } { $i < 20 } { incr i } {
+    spawn rsync -arzv -e "ssh -p $port" $source_files $user@$ip:$target_dir
+    expect 	{
+        -re $prompt { 
+            puts "[print_time] $ip connected -expect-"
+                    send "\r"
+            break;
+            }
+        -re "\[pP]assword:" {
+            send "$passwd\r"
+            set timeout 600
+            break;
+        }
+
+        "\(yes\/no\)\?" {
+            send "yes\r"
+        }
+        "Please type \'yes\' or \'no\': " {
+            send "yes\r"
+        }
+
+        timeout {
+            puts "\n[print_time] $ip\t connect timeout\n"
+            exit 2
+        }
+        "Connection refused" {
+            puts "[print_time] $ip connection refused\n"
+            exit 3
+
+        }
+
+        }
+}
+
+info_msg { "going to next loop"}
+
+for { set i 0 } { $i < 5 } { incr i } {
+    expect {
+
+        "Your password will expire in * days" {
+            send "$commands \r" 
+            set commands_flag 1
+            #send "stty -echo\r\n$commands \r"
+            break;
+            }
+
+        "Permission denied, please try again." {
+            puts "\n [print_time] $ip seems the password is incorrect \n"
+            exit 4
+        }
+	    "is not in the sudoers file.  This incident will be reported." {
+            puts "\n [print_time] $ip $user does not has the sudo priviege\n"
+            exit 5
+        }
+        timeout {
+            puts "\n[print_time] $ip\t connect timeout\n"
+            exit 2
+        }
+        eof {
+            #puts "\n[print_time] operation complete $ip\n"
+            info_msg { "files rsync complete" }
+            exit 0
+        }
+    }
+}
