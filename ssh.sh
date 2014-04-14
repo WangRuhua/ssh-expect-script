@@ -75,8 +75,8 @@ cat $IPfile |grep -v ^$|grep -v ^\#|while read tmp
 do
 	ip=`echo $tmp|awk  '{print $1}'`
 
-	echo "#$i ./sudo.ssh.exp $user $ip $port $commands"
-	./sudo.ssh.exp "$user" $ip $port $passwd "$commands" 
+	echo "#$i ./ssh.exp $user $ip $port $commands"
+	./ssh.exp "$user" $ip $port $passwd "$commands" 
     trap 'echo "exit now...";exit'  2
     sleep 3;
     i=`expr $i + 1 `
