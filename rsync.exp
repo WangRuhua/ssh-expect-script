@@ -1,5 +1,5 @@
-#!/usr/bin/expect  -d
 #!/usr/bin/expect  
+#!/usr/bin/expect  -d
 
 if { [llength $argv] < 2 } {
     puts "usage:./$argv0  user ip port passwd commands"
@@ -14,11 +14,12 @@ set port [lindex $argv 2]
 set passwd [lindex $argv 3]
 set source_files [lindex $argv 4]
 set target_dir [lindex $argv 5]
-set timeout 60
+set pull_flag [lindex $argv 6]
+set timeout  60
 
 
 #./rsync.exp $user $ip $port $passwd $source_files $target_dir
-puts "rsync -arzv -e \"ssh -p $port\" $source_files $user@$ip:$target_dir"
+#puts "rsync -arzv -e \"ssh -p $port\" $source_files $user@$ip:$target_dir"
 proc print_time {} {
     return [ clock format [clock seconds]  -format %H:%M:%S]
 }
@@ -28,10 +29,16 @@ proc info_msg { a } {
 }
 
 set prompt "(%|#|\\\$) $"
-set commands_flag 0
 
 for { set i 0 } { $i < 20 } { incr i } {
-    spawn rsync -arzv -e "ssh -p $port" $source_files $user@$ip:$target_dir
+
+    if {$pull_flag == 1} {
+    puts "spawn rsync -arzv -e \"ssh -p $port -l $user\" $ip:$source_files $target_dir"
+    spawn rsync -arzv -e "ssh -p $port -l $user" $ip:$source_files $target_dir
+    } else {
+    puts "spawn rsync -arzv -e \"ssh -p $port -l $user\" $source_files $ip:$target_dir"
+    spawn rsync -arzv -e "ssh -p $port -l $user" $source_files $ip:$target_dir
+    }
     expect 	{
         -re $prompt { 
             puts "[print_time] $ip connected -expect-"
@@ -59,6 +66,11 @@ for { set i 0 } { $i < 20 } { incr i } {
             puts "[print_time] $ip connection refused\n"
             exit 3
 
+        }
+        eof {
+            #puts "\n[print_time] operation complete $ip\n"
+            info_msg { "files rsync complete" }
+            exit 0
         }
 
         }

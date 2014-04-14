@@ -3,7 +3,10 @@
 # Usage info
 show_help() {
 cat << EOF
-Usage: ${0##*/} [-hv] [-f IPs.txt ] [-u user ] [-p port] [-s source_files ] [ -d target_dir ]...
+Usage: $0 [-hv] [-f IPs.txt ] [-u user ] [-p port] [-s source_file] [ -d target_dir ] [ -P ]...
+
+push mode : rsync -arzv -e "ssh -l user -p port" source_files remote_server:target_dir
+pull mode : rsync -arzv -e "ssh -l user -p port" source_host:source_files target_dir
     
     -f          read target names from IPs.txt
     -u          username specifies the user to log in as on the remote machine 
@@ -11,15 +14,16 @@ Usage: ${0##*/} [-hv] [-f IPs.txt ] [-u user ] [-p port] [-s source_files ] [ -d
     -s          source files,or directory
     -d          target dir
     -h          display this help and exit
-    -v          verbose mode. Can be used multiple times for increased
+    -v          verbose mode 
+    -P          pull mode
 EOF
 }                
 
-#if [ $# -le 3 ]
-#then
-#	show_help
-#	exit
-#fi
+if [ $# -le 3 ]
+then
+	show_help
+	exit 1
+fi
 # Initialize our own variables:
 output_file=""
 verbose=0
@@ -27,7 +31,8 @@ port=22
 user=$(whoami)
 
 OPTIND=1 # Reset is necessary if getopts was used previously in the script.  
-while getopts "h:v:f:u:p:s:d:" opt; do
+pull_flag=0 # default mode is push-mode
+while getopts "h:v:f:u:p:s:d:P" opt; do
     case "$opt" in
         h)
             show_help
@@ -46,6 +51,8 @@ while getopts "h:v:f:u:p:s:d:" opt; do
             ;;
         d) target_dir=$OPTARG
             ;;
+        P) pull_flag=1
+            ;;
         '?')
                     show_help >&2
                     exit 1
@@ -58,14 +65,14 @@ shift "$((OPTIND-1))" # Shift off the options and optional --.
 #printf 'verbose=<%s>\nuser=<%s>\nIPfile=<%s>\nport=<%s>\ncommands=<%s>\nLeftovers:\n' "$verbose" "$user" "$IPfile" "$port" "$commands"
 #printf '<%s>\n' "$@"
 
-if ls  $source_files;then 
-    echo  ls "$source_files"
-else
-    echo "no commands is found,check the arguments please";
-    show_help;
-    exit 3;
-fi
-
+#if [ -f "$source_files" ];then 
+#    echo  ls "$source_files"
+#else
+#    echo "no files is found,check the arguments please";
+#    show_help;
+#    exit 3;
+#fi
+#
 
 echo "enter passord of $user"
 stty   -echo 
@@ -85,8 +92,8 @@ cat $IPfile |grep -v ^$|grep -v ^\#|while read tmp
 do
 	ip=`echo $tmp|awk  '{print $1}'`
 
-	echo ./rsync.exp $user $ip $port $passwd $source_files $target_dir
-	./rsync.exp $user $ip $port $passwd $source_files $target_dir
+	#echo ./rsync.exp $user $ip $port $passwd $source_files $target_dir
+	./rsync.exp $user $ip $port $passwd $source_files $target_dir $pull_flag
     trap 'echo "exit now...";exit'  2
     sleep 3;
     i=`expr $i + 1 `
