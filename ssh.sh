@@ -52,6 +52,8 @@ while getopts "h:v:f:u:p:m:" opt; do
 done
 shift "$((OPTIND-1))" # Shift off the options and optional --.
 
+logfile=ssh.log
+>$logfile
 #printf 'verbose=<%s>\nuser=<%s>\nIPfile=<%s>\nport=<%s>\ncommands=<%s>\nLeftovers:\n' "$verbose" "$user" "$IPfile" "$port" "$commands"
 #printf '<%s>\n' "$@"
 
@@ -75,8 +77,8 @@ cat $IPfile |grep -v ^$|grep -v ^\#|while read tmp
 do
 	ip=`echo $tmp|awk  '{print $1}'`
 
-	echo "#$i ./ssh.exp $user $ip $port $commands"
-	./ssh.exp "$user" $ip $port $passwd "$commands" 
+	echo "#i ./ssh.exp $user $ip $port $passwd $logfile $commands "
+	./ssh.exp "$user" $ip $port $passwd $logfile "$commands" 
     trap 'echo "exit now...";exit'  2
     sleep 3;
     i=`expr $i + 1 `

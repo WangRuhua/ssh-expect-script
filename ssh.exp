@@ -1,19 +1,26 @@
 #!/usr/bin/expect  
 #!/usr/bin/expect  -d
 
-if { [llength $argv] < 2 } {
-    puts "usage:./$argv0  user ip port passwd commands"
+proc usage {} {
+    send_error "usage:./$argv0  user ip port passwd commands\n"
 	exit 1
 }
 
+if {[llength $argv] != 6} usage
 match_max 3000
 
 set user [lindex $argv 0]
 set ip [lindex $argv 1]
 set port [lindex $argv 2]
 set passwd [lindex $argv 3]
-set commands [lindex $argv 4]
+set logfile [lindex $argv 4]
+set commands [lindex $argv 5]
+
+if {[regexp "^\[0-9]+$" $port] != 1} usage
+#init variables
 set timeout 60
+#log_user 0
+log_file $logfile
 
 
 proc print_time {} {
@@ -21,116 +28,108 @@ proc print_time {} {
 }
 proc info_msg { a } {
     global ip
-    puts "\n[print_time] info $ip $a\n"
+    send_user "\n[print_time] info $ip $a\n"
 }
 
 set prompt "(%|#|\\\$) $"
 
 set commands_flag 0
-for { set i 0 } { $i < 20 } { incr i } {
-
-    spawn ssh  $user@$ip -p$port
-    puts "[print_time] connecting to $user@$ip -p$port commands:$commands #$i" 
-    expect 	{
+spawn ssh  $user@$ip -p$port
+send_user "[print_time] connecting to $user@$ip -p$port commands:$commands \n" 
+expect  {
         -re $prompt { 
-            puts "[print_time] $ip connected -expect-"
-                    send "\r"
-            break;
-            }
-        -re "\[pP]assword:" {
-            send "$passwd\r"
-            break;
-        }
+            send_user "[print_time] $ip connected \n"
+            send "\r" }
+
+        -re "\[P|p]assword:" {
+            send "$passwd\r" }
 
         "\(yes\/no\)\?" {
-            send "yes\r"
-        }
+            send "yes\r" 
+            exp_continue }
+
         "Please type \'yes\' or \'no\': " {
-            send "yes\r"
-        }
+            send "yes\r" 
+            exp_continue }
 
         timeout {
-            puts "\n[print_time] $ip\t connect timeout\n"
-            exit 2
-        }
-        "Connection refused"
-        {
-            puts "[print_time] $ip connection refused\n"
-            exit 3
+            send_error "[print_time] $ip\t connect timeout\n"
+            exit 2 }
+        "Connection timed out" {
+            send_error "[print_time] $ip\t connect timeout\n"
+            exit 2 }
+        "Connection refused" {
+            send_error "[print_time] $ip connection refused\n"
+            exit 3 }
+        "Name or service not known" {
+            send_error "[print_time] $ip server name or IP not known\n" 
+            exit 5 }
+        "Permission denied, please try again." {
+            send_error "\n [print_time] $ip seems the password is incorrect \n"
+            exit 4 }
 
-        }
-
-        }
 }
 
 #info_msg { "going to next loop"}
 
-for { set i 0 } { $i < 5 } { incr i } {
-    expect {
-        -re "\r\nLast login: .* from .*\r\r\n" {
-            #puts "\r\n[print_time] $ip I'm login successful"
-            puts "\n"
-            }
-
-        -re $prompt {
-            send "$commands \r"
-            set commands_flag 1
-            break;
-            }
-        "Your password will expire in * days" {
-            send "$commands \r" 
-            set commands_flag 1
-            #send "stty -echo\r\n$commands \r"
-            break;
-            }
-
-        "assword" {
-            send "$passwd\r"
-            #puts "\n [print_time] $ip \n"
-            }
-
-        -re "\[Pp]assword for $user" {
-            send "$passwd\r" 
-            }
-
-        "Permission denied, please try again.\r\r\n" {
-            puts "\n [print_time] $ip seems the password is incorrect \n"
-            exit 4
+#puts "The output is '$expect_out(buffer)'."
+expect {
+    -re "Last login: .* from .*$" {
+        #puts "\r\n[print_time] $ip I'm login successful"
+        send_user "\n" }
+    -re . { exp_continue }
+    -re $prompt {
+        if {$commands_flag == 0} {
+        send "$commands \r"
+        set commands_flag 1 }
         }
-	    "is not in the sudoers file.  This incident will be reported." {
-            puts "\n [print_time] $ip $user does not has the sudo priviege\n"
-            exit 5
+    "Your password will expire in * days" {
+        if {$commands_flag == 0} {
+        send "$commands \r" 
+        set commands_flag 1}
+        #send "stty -echo\r\n$commands \r" 
         }
-        timeout {
-            puts "\n[print_time] $ip\t connect timeout\n"
-            exit 2
-        }
-    }
+
+    "assword" {
+        send "$passwd\r"
+        exp_continue }
+
+    -re "\[Pp]assword for $user" {
+        send "$passwd\r"
+        exp_continue }
+    "Permission denied, please try again.\r\r\n" {
+        send_error "\n [print_time] $ip seems the password is incorrect \n"
+        exit 4 }
+        ## centOS
+    "is not in the sudoers file.  This incident will be reported." {
+        send_error "\n [print_time] $ip $user does not has the sudo priviege\n"
+        exit 5 }
+    timeout {
+        send_error "\n[print_time] $ip\t connect timeout\n"
+        exit 2 }
 }
-
+#puts "The output is '$expect_out(buffer)'."
 
 for { set i 0 } { $i < 3 } { incr i } {
     expect {
             "assword" {
-                    send "$passwd\r"
-                    }
+                    send "$passwd\r" }
             -re $prompt { 
                 if {$commands_flag == 0} {
                         send "$commands\r"
                         set commands_flag 1
                    } else {
-                        send "logout\r"
-                    }
+                        #send_user "The output is '$expect_out(buffer)'."
+                        send "logout\r" 
+                        info_msg { "logout is sent\n" } }
 
                 }
             timeout {
-                    puts "\n[print_time] $ip\t connect timeout\n"
-                }
+                    send_error "\n[print_time] $ip\t timeout\n" }
             eof {
                 #puts "\n[print_time] operation complete $ip\n"
                 info_msg { "operation complete" }
-                exit 0
-                }
+                exit 0 }
 
         }
     }

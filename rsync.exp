@@ -1,7 +1,7 @@
 #!/usr/bin/expect  
 #!/usr/bin/expect  -d
 
-if { [llength $argv] < 2 } {
+if { [llength $argv] != 7 } {
     puts "usage:./$argv0  user ip port passwd commands"
 	exit 1
 }
@@ -25,12 +25,12 @@ proc print_time {} {
 }
 proc info_msg { a } {
     global ip
-    puts "\n[print_time] info $ip $a\n"
+    send_user "\n[print_time] info $ip $a\n"
 }
 
 set prompt "(%|#|\\\$) $"
 
-for { set i 0 } { $i < 20 } { incr i } {
+    set timeout  60
 
     if {$pull_flag == 1} {
     puts "spawn rsync -arzv -e \"ssh -p $port -l $user\" $ip:$source_files $target_dir"
@@ -39,71 +39,45 @@ for { set i 0 } { $i < 20 } { incr i } {
     puts "spawn rsync -arzv -e \"ssh -p $port -l $user\" $source_files $ip:$target_dir"
     spawn rsync -arzv -e "ssh -p $port -l $user" $source_files $ip:$target_dir
     }
-    expect 	{
+expect 	{
+        "Name or service not known" {
+            send_error "[print_time] $ip server name not found" 
+            exp_close 
+            exit 1 }
+        "information on Morningstar\'s system" {
+            exp_continue }
         -re $prompt { 
             puts "[print_time] $ip connected -expect-"
-                    send "\r"
-            break;
-            }
+                    send "\r" }
         -re "\[pP]assword:" {
             send "$passwd\r"
             set timeout 600
-            break;
-        }
+            exp_continue }
 
         "\(yes\/no\)\?" {
-            send "yes\r"
-        }
+            send "yes\r" 
+            exp_continue }
         "Please type \'yes\' or \'no\': " {
-            send "yes\r"
-        }
+            send "yes\r" 
+            exp_continue }
 
-        timeout {
-            puts "\n[print_time] $ip\t connect timeout\n"
-            exit 2
-        }
         "Connection refused" {
-            puts "[print_time] $ip connection refused\n"
-            exit 3
-
-        }
-        eof {
-            #puts "\n[print_time] operation complete $ip\n"
-            info_msg { "files rsync complete" }
-            exit 0
-        }
-
-        }
-}
-
-info_msg { "going to next loop"}
-
-for { set i 0 } { $i < 5 } { incr i } {
-    expect {
-
+            send_error "[print_time] $ip connection refused\n"
+            exit 3 }
         "Your password will expire in * days" {
-            send "$commands \r" 
-            set commands_flag 1
-            #send "stty -echo\r\n$commands \r"
-            break;
-            }
+            exp_continue }
 
         "Permission denied, please try again." {
-            puts "\n [print_time] $ip seems the password is incorrect \n"
+            send_error "\n [print_time] $ip seems the password is incorrect \n"
             exit 4
         }
 	    "is not in the sudoers file.  This incident will be reported." {
-            puts "\n [print_time] $ip $user does not has the sudo priviege\n"
-            exit 5
-        }
+            send_error "\n [print_time] $ip $user does not has the sudo priviege\n"
+            exit 5 }
         timeout {
-            puts "\n[print_time] $ip\t connect timeout\n"
-            exit 2
-        }
+            send_error "\n[print_time] $ip\t timeout\n"
+            exit 2 }
         eof {
-            #puts "\n[print_time] operation complete $ip\n"
             info_msg { "files rsync complete" }
-            exit 0
-        }
-    }
+            exit 0 }
 }
