@@ -3,14 +3,16 @@
 # Usage info
 show_help() {
 cat << EOF
-Usage: ${0##*/} [-hv] [-f IPs.txt ] [-u user ] [-p port] [-m commands]...
+Usage: ${0##*/} [-hv] [-f IPs.txt |-r "servers"] [-u user ] [-p port] [-m commands]...
     
     -f          read target names from IPs.txt
+    -r          servers 
     -u          username specifies the user to log in as on the remote machine 
     -p          ssh port,default is 22/tcp
     -m          commands run on remote machine
     -h          display this help and exit
     -v          verbose mode. Can be used multiple times for increased
+    
 EOF
 }                
 
@@ -26,7 +28,7 @@ port=22
 user=$(whoami)
 
 OPTIND=1 # Reset is necessary if getopts was used previously in the script.  It is a good idea to make this local in a function.
-while getopts "h:v:f:u:p:m:" opt; do
+while getopts "h:v:f:r:u:p:m:" opt; do
     case "$opt" in
         h)
             show_help
@@ -36,6 +38,8 @@ while getopts "h:v:f:u:p:m:" opt; do
             ;;
         f)  IPfile=$OPTARG
             [ -s $IPfile ] || { echo "no IP in $IPfile";exit 2; }
+            ;;
+        r)  remote_servers=$OPTARG
             ;;
         u)  user=$OPTARG
             ;;
@@ -52,6 +56,16 @@ while getopts "h:v:f:u:p:m:" opt; do
 done
 shift "$((OPTIND-1))" # Shift off the options and optional --.
 
+
+if [ -z "$IPfile" ];then
+    IPfile=ip.txt    
+    >$IPfile
+    if [ -z "$remote_servers" ];then
+        show_help >&2
+    else
+        echo $remote_servers | sed 's/\s\+/\n/g' > $IPfile
+    fi
+fi
 logfile=ssh.log
 >$logfile
 #printf 'verbose=<%s>\nuser=<%s>\nIPfile=<%s>\nport=<%s>\ncommands=<%s>\nLeftovers:\n' "$verbose" "$user" "$IPfile" "$port" "$commands"

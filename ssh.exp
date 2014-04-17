@@ -1,5 +1,5 @@
-#!/usr/bin/expect  
 #!/usr/bin/expect  -d
+#!/usr/bin/expect  
 
 proc usage {} {
     send_error "usage:./$argv0  user ip port passwd commands\n"
