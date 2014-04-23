@@ -36,6 +36,8 @@ set prompt "(%|#|\\\$) $"
 set commands_flag 0
 spawn ssh  $user@$ip -p$port
 send_user "[print_time] connecting to $user@$ip -p$port commands:$commands \n" 
+###login to server
+####
 expect  {
         -re $prompt { 
             send_user "[print_time] $ip connected \n"
@@ -70,14 +72,12 @@ expect  {
 
 }
 
-#info_msg { "going to next loop"}
-
 #puts "The output is '$expect_out(buffer)'."
+###send commands to servers
 expect {
     -re "Last login: .* from .*$" {
         #puts "\r\n[print_time] $ip I'm login successful"
         send_user "\n" }
-    -re . { exp_continue }
     -re $prompt {
         if {$commands_flag == 0} {
         send "$commands \r"
