@@ -91,7 +91,7 @@ cat $IPfile |grep -v ^$|grep -v ^\#|while read tmp
 do
 	ip=`echo $tmp|awk  '{print $1}'`
 
-	echo "#i ./ssh.exp $user $ip $port $passwd $logfile $commands "
+	#echo "#i ./ssh.exp $user $ip $port $passwd $logfile $commands "
 	./ssh.exp "$user" $ip $port $passwd $logfile "$commands" 
     trap 'echo "exit now...";exit'  2
     sleep 3;

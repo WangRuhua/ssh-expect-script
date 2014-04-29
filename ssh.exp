@@ -23,12 +23,29 @@ set timeout 60
 log_file $logfile
 
 
+set green "\033\[32m"
+set red "\033\[31m"
+set nocolor "\033\[0m"
+set cyan "\033\[36m"
+
 proc print_time {} {
     return [ clock format [clock seconds]  -format %H:%M:%S]
 }
 proc info_msg { a } {
     global ip
-    send_user "\n[print_time] info $ip $a\n"
+    global cyan
+    global red
+    global green
+    global nocolor
+    send_user "\n${cyan}[print_time]${nocolor} info ${cyan}$ip ${green}$a${nocolor}\n"
+}
+proc error_msg { a } {
+    global ip
+    global cyan
+    global red
+    global green
+    global nocolor
+    send_error "\n${red}[print_time] error $ip $a${nocolor}\n"
 }
 
 set prompt "(%|#|\\\$) $"
@@ -55,19 +72,19 @@ expect  {
             exp_continue }
 
         timeout {
-            send_error "[print_time] $ip\t connect timeout\n"
+            error_msg {"connect timeout"}
             exit 2 }
         "Connection timed out" {
-            send_error "[print_time] $ip\t connect timeout\n"
+            error_msg {"connect timeout"}
             exit 2 }
         "Connection refused" {
-            send_error "[print_time] $ip connection refused\n"
+            error_msg {"connection resused "}
             exit 3 }
         "Name or service not known" {
-            send_error "[print_time] $ip server name or IP not known\n" 
+            error_msg {"server name or IP not known"}
             exit 5 }
         "Permission denied, please try again." {
-            send_error "\n [print_time] $ip seems the password is incorrect \n"
+            error_msg {"seems the password is incorrect"}
             exit 4 }
 
 }
@@ -98,7 +115,7 @@ expect {
         send "$passwd\r"
         exp_continue }
     "Permission denied, please try again.\r\r\n" {
-        send_error "\n [print_time] $ip seems the password is incorrect \n"
+        error_msg {"seems the password is incorrect"}
         exit 4 }
         ## centOS
     "is not in the sudoers file.  This incident will be reported." {
@@ -121,7 +138,7 @@ for { set i 0 } { $i < 3 } { incr i } {
                    } else {
                         #send_user "The output is '$expect_out(buffer)'."
                         send "logout\r" 
-                        info_msg { "logout is sent\n" } }
+                        #info_msg { "logout is sent\n" } }
 
                 }
             timeout {
